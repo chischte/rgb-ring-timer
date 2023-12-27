@@ -160,6 +160,8 @@ void fade_in_led() {
 
   ring.setPixelColor(fade_led, rgb_fade_r, rgb_fade_g, rgb_fade_b);
 
+  delay(2);
+
   ring.show();
 }
 
