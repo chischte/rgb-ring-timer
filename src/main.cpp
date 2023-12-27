@@ -1,5 +1,18 @@
 #include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
+#include <EEPROM_Counter.h> //https://github.com/chischte/eeprom-counter-library.git
+
+enum counter {
+  stored_brightness, //
+  stored_duration, //
+  endOfEnum //as to be the last one!
+};
+int number_of_values = endOfEnum;
+
+int eeprom_min_address = 0; // has to be 0 or bigger
+int eepromMaxAddress = 1023;
+
+EEPROM_Counter eeprom_storage;
 
 #define LED_PIN 8
 #define LED_COUNT 24
@@ -224,17 +237,44 @@ void handle_input_chars() {
   }
 }
 
+void manage_eeprom_updates() {
+
+  static unsigned long prev_duration = runtime_secs;
+
+  if (prev_duration != runtime_secs) {
+    eeprom_storage.set_value(stored_duration, runtime_secs);
+    prev_duration = runtime_secs;
+    Serial.println("STORED DURATION");
+  }
+
+  static unsigned long prev_brightness = ring.getBrightness();
+  
+  if (prev_brightness != ring.getBrightness()) {
+    eeprom_storage.set_value(stored_brightness, ring.getBrightness());
+    prev_brightness = ring.getBrightness();
+    Serial.println("STORED BRIGHTNESS");
+  }
+}
+
 void setup() {
   Serial.begin(9600);
+  
+  eeprom_storage.setup(eeprom_min_address, eepromMaxAddress, number_of_values);
+
+  long brightness = eeprom_storage.get_value(stored_brightness);
+  runtime_secs = eeprom_storage.get_value(stored_duration);
+
   ring.begin();
   ring.show();
-  ring.setBrightness(10);
+  ring.setBrightness(brightness);
   calculate_time_per_led();
   start_time = millis();
   Serial.println("EXIT SETUP");
 }
 
 void loop() {
+
+  manage_eeprom_updates();
 
   handle_input_chars();
 
@@ -243,6 +283,4 @@ void loop() {
   } else {
     show_timer_duration();
   }
-
-  unsigned long runtime = millis() - start_time;
 }
