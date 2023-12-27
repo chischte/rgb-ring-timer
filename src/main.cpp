@@ -8,7 +8,7 @@
 unsigned long runtime_secs = 5;
 // ------------------------------
 
-int runtime_increment = 1; //[s]
+unsigned int runtime_increment = 1; //[s]
 
 unsigned long start_time;
 
@@ -25,6 +25,11 @@ void set_led_orange(int led_no) {
 
 void set_led_green(int led_no) {
   ring.setPixelColor(led_no, 0, 255, 0);
+  ring.show();
+}
+
+void set_led_blue(int led_no) {
+  ring.setPixelColor(led_no, 0, 0, 255);
   ring.show();
 }
 
@@ -47,9 +52,9 @@ int calculate_current_led() {
   return current_led;
 }
 
-void set_all_led_green() {
+void set_all_led_blue() {
   for (unsigned int i = 0; i < ring.numPixels(); i++) {
-    ring.setPixelColor(i, 0, 255, 0);
+    ring.setPixelColor(i, 0, 0, 255);
     ring.show();
     delay(5);
   }
@@ -84,7 +89,7 @@ void increase_time() { //
 void show_duration() {
   int leds_to_show = runtime_secs / runtime_increment;
   for (int i = 0; i < leds_to_show; i++) {
-    set_led_green(i);
+    set_led_blue(i);
   }
 }
 
@@ -94,7 +99,7 @@ void run_clock() {
   if (!round_completed) {
     set_led_orange(calculate_current_led());
   } else {
-    set_all_led_green();
+    set_all_led_blue();
   }
 }
 
