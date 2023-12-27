@@ -50,10 +50,24 @@ void set_all_led_green() {
   }
 }
 
+char get_input_char() {
+  char incoming_char = '0';
+
+  if (Serial.available() > 0) {
+    incomingByte = Serial.read();
+    incoming_char = char(incomingByte);
+  }
+  return incoming_char;
+}
+
 void restart_circle() {
   ring.clear();
   start_time = millis();
 }
+
+void decrease_time() {}
+
+void increase_time() {}
 
 void setup() {
   Serial.begin(9600);
@@ -69,24 +83,27 @@ void setup() {
 
 void loop() {
 
-  if (Serial.available() > 0) {
-    incomingByte = Serial.read();
-    char incoming_char = char(incomingByte);
+  char incoming_char = get_input_char();
 
-    char do_left = 'a';
-    char do_start = 's';
-    char do_right = 'd';
+  const char do_left = 'a';
+  const char do_start = 's';
+  const char do_right = 'd';
 
-    if (incoming_char == do_left) {
-      Serial.println("left");
-    }
-    if (incoming_char == do_start) {
-      Serial.println("start");
-      restart_circle();
-    }
-    if (incoming_char == do_right) {
-      Serial.println("right");
-    }
+  switch (incoming_char) {
+  case do_left:
+    decrease_time();
+    break;
+
+  case do_start:
+    restart_circle();
+    break;
+
+  case do_right:
+    increase_time();
+    break;
+
+  default:
+    break;
   }
 
   bool round_completed = millis() - start_time > (runtime_secs * 1000);
