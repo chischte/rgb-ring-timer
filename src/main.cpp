@@ -54,8 +54,7 @@ int calculate_current_led() {
 
 void set_all_led_blue() {
   for (unsigned int i = 0; i < ring.numPixels(); i++) {
-    ring.setPixelColor(i, 0, 0, 255);
-    ring.show();
+    set_led_blue(i);
     delay(5);
   }
 }
@@ -68,11 +67,6 @@ char get_input_char() {
     incoming_char = char(incomingByte);
   }
   return incoming_char;
-}
-
-void start_circle() {
-  ring.clear();
-  start_time = millis();
 }
 
 void decrease_time() {
@@ -103,12 +97,36 @@ void run_clock() {
   }
 }
 
+void increase_brightness() {
+  const int max_brightness = 150;
+  int brightness = ring.getBrightness();
+  brightness += 1;
+  if (brightness > max_brightness) {
+    brightness = max_brightness;
+  }
+  ring.setBrightness(brightness);
+  Serial.println(ring.getBrightness());
+}
+
+void decrease_brightness() {
+  const int min_brightness = 1;
+  int brightness = ring.getBrightness();
+  brightness -= 1;
+  if (brightness < min_brightness) {
+    brightness = min_brightness;
+  }
+  ring.setBrightness(brightness);
+  Serial.println(ring.getBrightness());
+}
+
 void handle_input_chars() {
   char incoming_char = get_input_char();
 
   const char do_left = 'a';
   const char do_start = 's';
   const char do_right = 'd';
+  const char do_up = 'w';
+  const char do_down = 'x';
 
   switch (incoming_char) {
   case do_left:
@@ -119,13 +137,22 @@ void handle_input_chars() {
 
   case do_start:
     clock_is_ticking = true;
-    start_circle();
+    ring.clear();
+    start_time = millis();
     break;
 
   case do_right:
     clock_is_ticking = false;
     ring.clear();
     increase_time();
+    break;
+
+  case do_up:
+    increase_brightness();
+    break;
+
+  case do_down:
+    decrease_brightness();
     break;
 
   default:
