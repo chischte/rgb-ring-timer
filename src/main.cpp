@@ -5,10 +5,10 @@
 #define LED_COUNT 24
 
 // ------------------------------
-unsigned long runtime_secs = 5;
+unsigned long runtime_secs = 30;
 // ------------------------------
 
-unsigned int runtime_increment = 1; //[s]
+unsigned int runtime_increment = 30; //[s]
 
 unsigned long start_time;
 
@@ -74,24 +74,82 @@ void decrease_time() {
   if (runtime_secs <= runtime_increment) {
     runtime_secs = runtime_increment;
   }
+
+  // CONSOLE OUT:
+  Serial.print("DURATION: ");
+  float duration = float(runtime_secs) / 60.0;
+  Serial.print(duration, 1);
+  Serial.println(" [min]");
 }
 
 void increase_time() { //
   runtime_secs += runtime_increment;
+
+  if (runtime_secs >= runtime_increment * LED_COUNT) {
+    runtime_secs = runtime_increment * LED_COUNT;
+  }
+
+  // CONSOLE OUT:
+  Serial.print("DURATION: ");
+  float duration = float(runtime_secs) / 60.0;
+  Serial.print(duration, 1);
+  Serial.println(" [min]");
 }
 
-void show_duration() {
+void show_timer_duration() {
   int leds_to_show = runtime_secs / runtime_increment;
   for (int i = 0; i < leds_to_show; i++) {
     set_led_blue(i);
   }
 }
 
+void fade_in_led() {
+
+  int current_led = calculate_current_led();
+
+  static int previous_led = 0;
+
+  static unsigned long fade_start_time = millis();
+
+  if (current_led != previous_led) {
+    fade_start_time = millis();
+    previous_led = current_led;
+  }
+
+  unsigned long fade_time_elapsed = millis() - fade_start_time;
+
+  float fade_factor = float(fade_time_elapsed) / float(calculate_time_per_led());
+
+  if (fade_factor > 1) {
+    fade_factor = 1;
+  }
+
+  // if (fade_factor < 0.1) {
+  //   fade_factor = 0.1;
+  // }
+
+  // Orange:
+  const int rgb_full_r = 255;
+  const int rgb_full_g = 65;
+  const int rgb_full_b = 0;
+
+  // Orange faded:
+  int rgb_fade_r = float(rgb_full_r) * fade_factor;
+  int rgb_fade_g = float(rgb_full_g) * fade_factor;
+  int rgb_fade_b = float(rgb_full_b) * fade_factor;
+
+  int fade_led = calculate_current_led();
+
+  ring.setPixelColor(fade_led, rgb_fade_r, rgb_fade_g, rgb_fade_b);
+
+  ring.show();
+}
+
 void run_clock() {
   bool round_completed = millis() - start_time > (runtime_secs * 1000);
 
   if (!round_completed) {
-    set_led_orange(calculate_current_led());
+    fade_in_led();
   } else {
     set_all_led_blue();
   }
@@ -105,6 +163,9 @@ void increase_brightness() {
     brightness = max_brightness;
   }
   ring.setBrightness(brightness);
+
+  // CONSOLE OUT:
+  Serial.print("BRIGHTNESS: ");
   Serial.println(ring.getBrightness());
 }
 
@@ -116,6 +177,9 @@ void decrease_brightness() {
     brightness = min_brightness;
   }
   ring.setBrightness(brightness);
+
+  // CONSOLE OUT:
+  Serial.print("BRIGHTNESS: ");
   Serial.println(ring.getBrightness());
 }
 
@@ -162,22 +226,23 @@ void handle_input_chars() {
 
 void setup() {
   Serial.begin(9600);
-  // Serial.begin(115200);
   ring.begin();
   ring.show();
   ring.setBrightness(10);
   calculate_time_per_led();
   start_time = millis();
   Serial.println("EXIT SETUP");
-  // ring.clear();
 }
 
 void loop() {
+
   handle_input_chars();
 
   if (clock_is_ticking) {
     run_clock();
   } else {
-    show_duration();
+    show_timer_duration();
   }
+
+  unsigned long runtime = millis() - start_time;
 }
