@@ -1,6 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
-#include <EEPROM_Counter.h> //https://github.com/chischte/eeprom-counter-library.git
+#include <EEPROM_Counter.h> //    https://github.com/chischte/eeprom-counter-library.git
 
 enum counter {
   stored_brightness, //
@@ -8,8 +8,7 @@ enum counter {
   endOfEnum //as to be the last one!
 };
 int number_of_values = endOfEnum;
-
-int eeprom_min_address = 0; // has to be 0 or bigger
+int eeprom_min_address = 0;
 int eepromMaxAddress = 1023;
 
 EEPROM_Counter eeprom_storage;
@@ -141,6 +140,12 @@ void fade_in_led() {
   //   fade_factor = 0.1;
   // }
 
+  if (current_led == 0) {
+    if (fade_factor < 0.5) {
+      fade_factor = 0.5;
+    }
+  }
+
   // Orange:
   const int rgb_full_r = 255;
   const int rgb_full_g = 65;
@@ -248,7 +253,7 @@ void manage_eeprom_updates() {
   }
 
   static unsigned long prev_brightness = ring.getBrightness();
-  
+
   if (prev_brightness != ring.getBrightness()) {
     eeprom_storage.set_value(stored_brightness, ring.getBrightness());
     prev_brightness = ring.getBrightness();
@@ -258,7 +263,7 @@ void manage_eeprom_updates() {
 
 void setup() {
   Serial.begin(9600);
-  
+
   eeprom_storage.setup(eeprom_min_address, eepromMaxAddress, number_of_values);
 
   long brightness = eeprom_storage.get_value(stored_brightness);
