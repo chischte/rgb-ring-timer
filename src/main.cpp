@@ -11,6 +11,8 @@ unsigned long runtime_secs = 5;
 unsigned long time_per_led;
 unsigned long start_time;
 
+int incomingByte = 0;
+
 Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 void set_led_orange(int led_no) {
@@ -48,17 +50,44 @@ void set_all_led_green() {
   }
 }
 
+void restart_circle() {
+  ring.clear();
+  start_time = millis();
+}
+
 void setup() {
   Serial.begin(9600);
+  // Serial.begin(115200);
   ring.begin();
   ring.show();
   ring.setBrightness(8);
   calculate_time_per_led();
   start_time = millis();
+  Serial.println("EXIT SETUP");
   // ring.clear();
 }
 
 void loop() {
+
+  if (Serial.available() > 0) {
+    incomingByte = Serial.read();
+    char incoming_char = char(incomingByte);
+
+    char do_left = 'a';
+    char do_start = 's';
+    char do_right = 'd';
+
+    if (incoming_char == do_left) {
+      Serial.println("left");
+    }
+    if (incoming_char == do_start) {
+      Serial.println("start");
+      restart_circle();
+    }
+    if (incoming_char == do_right) {
+      Serial.println("right");
+    }
+  }
 
   bool round_completed = millis() - start_time > (runtime_secs * 1000);
 
