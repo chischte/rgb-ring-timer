@@ -8,7 +8,8 @@
 unsigned long runtime_secs = 5;
 // ------------------------------
 
-unsigned long time_per_led;
+int runtime_increment = 1; //[s]
+
 unsigned long start_time;
 
 int incomingByte = 0;
@@ -25,14 +26,16 @@ void set_led_green(int led_no) {
   ring.show();
 }
 
-void calculate_time_per_led() {
+unsigned long calculate_time_per_led() {
   float float_time_per_led;
   float number_of_leds = ring.numPixels();
   float_time_per_led = float(runtime_secs * 1000) / number_of_leds;
-  time_per_led = float_time_per_led;
+  unsigned long time_per_led = float_time_per_led;
+  return time_per_led;
 }
 
 int calculate_current_led() {
+  unsigned long time_per_led = calculate_time_per_led();
   unsigned long time_elapsed;
   time_elapsed = millis() - start_time;
   unsigned int current_led = time_elapsed / time_per_led;
@@ -60,14 +63,21 @@ char get_input_char() {
   return incoming_char;
 }
 
-void restart_circle() {
+void start_circle() {
   ring.clear();
   start_time = millis();
 }
 
-void decrease_time() {}
+void decrease_time() {
+  runtime_secs -= runtime_increment;
+  if (runtime_secs <= runtime_increment) {
+    runtime_secs = runtime_increment;
+  }
+}
 
-void increase_time() {}
+void increase_time() { //
+  runtime_secs += runtime_increment;
+}
 
 void setup() {
   Serial.begin(9600);
@@ -95,7 +105,7 @@ void loop() {
     break;
 
   case do_start:
-    restart_circle();
+    start_circle();
     break;
 
   case do_right:
