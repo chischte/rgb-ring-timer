@@ -14,6 +14,8 @@ unsigned long start_time;
 
 int incomingByte = 0;
 
+bool clock_is_ticking = false;
+
 Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 void set_led_orange(int led_no) {
@@ -79,20 +81,24 @@ void increase_time() { //
   runtime_secs += runtime_increment;
 }
 
-void setup() {
-  Serial.begin(9600);
-  // Serial.begin(115200);
-  ring.begin();
-  ring.show();
-  ring.setBrightness(8);
-  calculate_time_per_led();
-  start_time = millis();
-  Serial.println("EXIT SETUP");
-  // ring.clear();
+void show_duration() {
+  int leds_to_show = runtime_secs / runtime_increment;
+  for (int i = 0; i < leds_to_show; i++) {
+    set_led_green(i);
+  }
 }
 
-void loop() {
+void run_clock() {
+  bool round_completed = millis() - start_time > (runtime_secs * 1000);
 
+  if (!round_completed) {
+    set_led_orange(calculate_current_led());
+  } else {
+    set_all_led_green();
+  }
+}
+
+void handle_input_chars() {
   char incoming_char = get_input_char();
 
   const char do_left = 'a';
@@ -101,26 +107,45 @@ void loop() {
 
   switch (incoming_char) {
   case do_left:
+    clock_is_ticking = false;
+    ring.clear();
     decrease_time();
     break;
 
   case do_start:
+    clock_is_ticking = true;
     start_circle();
     break;
 
   case do_right:
+    clock_is_ticking = false;
+    ring.clear();
     increase_time();
     break;
 
   default:
     break;
   }
+}
 
-  bool round_completed = millis() - start_time > (runtime_secs * 1000);
+void setup() {
+  Serial.begin(9600);
+  // Serial.begin(115200);
+  ring.begin();
+  ring.show();
+  ring.setBrightness(10);
+  calculate_time_per_led();
+  start_time = millis();
+  Serial.println("EXIT SETUP");
+  // ring.clear();
+}
 
-  if (!round_completed) {
-    set_led_orange(calculate_current_led());
+void loop() {
+  handle_input_chars();
+
+  if (clock_is_ticking) {
+    run_clock();
   } else {
-    set_all_led_green();
+    show_duration();
   }
 }
