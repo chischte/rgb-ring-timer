@@ -2,6 +2,19 @@
 #include <Arduino.h>
 #include <EEPROM_Counter.h> //    https://github.com/chischte/eeprom-counter-library.git
 
+// GLOBALS ---------------------------------------------------------------------
+
+#define LED_PIN 8
+#define LED_COUNT 24
+
+bool clock_is_ticking = false;
+
+unsigned long runtime_secs = 3600;
+unsigned int runtime_increment = 300; //[s]
+unsigned long start_time;
+
+// --- EEPROM ------------------------------------------------------------------
+
 enum counter {
   stored_brightness, //
   stored_duration, //
@@ -13,22 +26,11 @@ int eepromMaxAddress = 1023;
 
 EEPROM_Counter eeprom_storage;
 
-#define LED_PIN 8
-#define LED_COUNT 24
-
-// ------------------------------
-unsigned long runtime_secs = 30;
-// ------------------------------
-
-unsigned int runtime_increment = 30; //[s]
-
-unsigned long start_time;
-
-int incomingByte = 0;
-
-bool clock_is_ticking = false;
+// RGB RING --------------------------------------------------------------------
 
 Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+// VARIOUS FUNCTIONS -----------------------------------------------------------
 
 void set_led_orange(int led_no) {
   ring.setPixelColor(led_no, 255, 65, 0);
@@ -72,6 +74,7 @@ void set_all_led_blue() {
 }
 
 char get_input_char() {
+  int incomingByte = 0;
   char incoming_char = '0';
 
   if (Serial.available() > 0) {
@@ -81,10 +84,11 @@ char get_input_char() {
   return incoming_char;
 }
 
-void decrease_time() {
-  runtime_secs -= runtime_increment;
-  if (runtime_secs <= runtime_increment) {
-    runtime_secs = runtime_increment;
+void increase_time() { //
+  runtime_secs += runtime_increment;
+
+  if (runtime_secs >= runtime_increment * LED_COUNT) {
+    runtime_secs = runtime_increment * LED_COUNT;
   }
 
   // CONSOLE OUT:
@@ -94,11 +98,10 @@ void decrease_time() {
   Serial.println(" [min]");
 }
 
-void increase_time() { //
-  runtime_secs += runtime_increment;
-
-  if (runtime_secs >= runtime_increment * LED_COUNT) {
-    runtime_secs = runtime_increment * LED_COUNT;
+void decrease_time() {
+  runtime_secs -= runtime_increment;
+  if (runtime_secs <= runtime_increment) {
+    runtime_secs = runtime_increment;
   }
 
   // CONSOLE OUT:
@@ -274,15 +277,16 @@ void setup() {
   Serial.begin(9600);
 
   eeprom_storage.setup(eeprom_min_address, eepromMaxAddress, number_of_values);
-
   long brightness = eeprom_storage.get_value(stored_brightness);
   runtime_secs = eeprom_storage.get_value(stored_duration);
 
   ring.begin();
   ring.show();
   ring.setBrightness(brightness);
+
   calculate_time_per_led();
   start_time = millis();
+
   Serial.println("EXIT SETUP");
 }
 
