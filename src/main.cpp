@@ -4,14 +4,11 @@
 
 // GLOBALS ---------------------------------------------------------------------
 
-#define LED_PIN 8
-#define LED_COUNT 24
-
-bool clock_is_ticking = false;
+bool timer_is_running = false;
 
 unsigned long runtime_secs = 3600;
 unsigned int runtime_increment = 300; //[s]
-unsigned long start_time;
+unsigned long start_time; //[ms]
 
 // --- EEPROM ------------------------------------------------------------------
 
@@ -27,6 +24,9 @@ int eepromMaxAddress = 1023;
 EEPROM_Counter eeprom_storage;
 
 // RGB RING --------------------------------------------------------------------
+
+#define LED_PIN 8
+#define LED_COUNT 24
 
 Adafruit_NeoPixel ring(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -48,17 +48,15 @@ void set_led_blue(int led_no) {
 }
 
 unsigned long calculate_time_per_led() {
-  float float_time_per_led;
   float number_of_leds = ring.numPixels();
-  float_time_per_led = float(runtime_secs * 1000) / number_of_leds;
+  float float_time_per_led = float(runtime_secs * 1000) / number_of_leds;
   unsigned long time_per_led = float_time_per_led;
   return time_per_led;
 }
 
 int calculate_current_led() {
   unsigned long time_per_led = calculate_time_per_led();
-  unsigned long time_elapsed;
-  time_elapsed = millis() - start_time;
+  unsigned long time_elapsed = millis() - start_time;
   unsigned int current_led = time_elapsed / time_per_led;
   if (current_led >= ring.numPixels() - 1) {
     current_led = ring.numPixels() - 1;
@@ -71,17 +69,6 @@ void set_all_led_blue() {
     set_led_blue(i);
     delay(5);
   }
-}
-
-char get_input_char() {
-  int incomingByte = 0;
-  char incoming_char = '0';
-
-  if (Serial.available() > 0) {
-    incomingByte = Serial.read();
-    incoming_char = char(incomingByte);
-  }
-  return incoming_char;
 }
 
 void increase_time() { //
@@ -175,8 +162,8 @@ void fade_in_led() {
   ring.show();
 }
 
-void run_clock() {
-  bool round_completed = millis() - start_time > (runtime_secs * 1000);
+void run_timer() {
+  bool round_completed = millis() - start_time >= (runtime_secs * 1000);
 
   if (!round_completed) {
     fade_in_led();
@@ -213,6 +200,17 @@ void decrease_brightness() {
   Serial.println(ring.getBrightness());
 }
 
+char get_input_char() {
+  int incoming_byte = 0;
+  char incoming_char = '0';
+
+  if (Serial.available() > 0) {
+    incoming_byte = Serial.read();
+    incoming_char = char(incoming_byte);
+  }
+  return incoming_char;
+}
+
 void handle_input_chars() {
   char incoming_char = get_input_char();
 
@@ -224,19 +222,19 @@ void handle_input_chars() {
 
   switch (incoming_char) {
   case do_left:
-    clock_is_ticking = false;
+    timer_is_running = false;
     ring.clear();
     decrease_time();
     break;
 
   case do_start:
-    clock_is_ticking = true;
+    timer_is_running = true;
     ring.clear();
     start_time = millis();
     break;
 
   case do_right:
-    clock_is_ticking = false;
+    timer_is_running = false;
     ring.clear();
     increase_time();
     break;
@@ -273,6 +271,8 @@ void manage_eeprom_updates() {
   }
 }
 
+// SETUP -----------------------------------------------------------------------
+
 void setup() {
   Serial.begin(9600);
 
@@ -284,20 +284,19 @@ void setup() {
   ring.show();
   ring.setBrightness(brightness);
 
-  calculate_time_per_led();
-  start_time = millis();
-
   Serial.println("EXIT SETUP");
 }
 
-void loop() {
+// LOOP ------------------------------------------------------------------------
 
-  manage_eeprom_updates();
+void loop() {
 
   handle_input_chars();
 
-  if (clock_is_ticking) {
-    run_clock();
+  manage_eeprom_updates();
+
+  if (timer_is_running) {
+    run_timer();
   } else {
     show_timer_duration();
   }
