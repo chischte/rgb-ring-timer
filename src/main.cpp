@@ -146,10 +146,17 @@ void fade_in_led() {
     }
   }
 
-  // Orange:
+  // White:
   const int rgb_full_r = 255;
-  const int rgb_full_g = 65;
-  const int rgb_full_b = 0;
+  const int rgb_full_g = 255;
+  const int rgb_full_b = 255;
+
+  // Orange:
+  // const int rgb_full_r = 255;
+  // const int rgb_full_g = 65;
+  // const int rgb_full_b = 0;
+
+  fade_factor = 1; // ACTIVATE TO DISABLE FADE
 
   // Orange faded:
   int rgb_fade_r = float(rgb_full_r) * fade_factor;
@@ -160,7 +167,7 @@ void fade_in_led() {
 
   ring.setPixelColor(fade_led, rgb_fade_r, rgb_fade_g, rgb_fade_b);
 
-  delay(2);
+  // delay(2);
 
   ring.show();
 }
