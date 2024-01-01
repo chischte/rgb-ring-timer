@@ -1,13 +1,17 @@
 #include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
-#include <EEPROM_Counter.h> //    https://github.com/chischte/eeprom-counter-library.git
+#include <EEPROM_Counter.h> // https://github.com/chischte/eeprom-counter-library.git
 
 // GLOBALS ---------------------------------------------------------------------
 
-bool timer_is_running = false;
+// MODIFY TO CHANGE BEHAVIOUR:
+const int runtime_increment = 300; //[s]
+const int max_brightness = 150;
 
+// FIXED:
+bool timer_is_running = false;
+int brightness; // gets read from eeprom during setup
 unsigned long runtime_secs; // gets read from eeprom during setup
-unsigned int runtime_increment = 300; //[s]
 unsigned long start_time; //[ms]
 
 // --- EEPROM ------------------------------------------------------------------
@@ -53,7 +57,7 @@ unsigned long calculate_time_per_led() {
   // A fully lightened led ring means the time has run out.
   // Therefore the final led should light up when time has run out,
   // not when the last time intervall has started.
-  // Therefore the number intervalls is the number of leds -1.
+  // Therefore the number of intervalls is the number of leds -1.
 
   float number_of_intervals = number_of_leds - 1;
   float float_time_per_led = float(runtime_secs * 1000) / number_of_intervals;
@@ -139,7 +143,6 @@ void run_timer() {
 }
 
 void increase_brightness() {
-  const int max_brightness = 150;
   int brightness = ring.getBrightness();
   brightness += 1;
   if (brightness > max_brightness) {
@@ -218,6 +221,32 @@ void handle_input_chars() {
   }
 }
 
+void get_eeprom_values() {
+
+  // GET BRIGHTNESS:
+  brightness = eeprom_storage.get_value(stored_brightness);
+
+  if (brightness < 1) {
+    brightness = 1;
+  }
+  if (brightness > max_brightness) {
+    brightness = max_brightness;
+  }
+
+  // GET RUNTIME:
+  runtime_secs = eeprom_storage.get_value(stored_duration);
+
+  if (runtime_secs < runtime_increment) {
+    runtime_secs = runtime_increment;
+  }
+
+  unsigned long max_runtime = runtime_increment * ring.numPixels();
+
+  if (runtime_secs > max_runtime) {
+    runtime_secs = max_runtime;
+  }
+}
+
 void manage_eeprom_updates() {
 
   static unsigned long prev_duration = runtime_secs;
@@ -240,24 +269,18 @@ void manage_eeprom_updates() {
 // SETUP -----------------------------------------------------------------------
 
 void setup() {
-  Serial.begin(9600);
 
-  // --- EEPROM -------------
+  // EEPROM:
   eeprom_storage.setup(eeprom_min_address, eepromMaxAddress, number_of_values);
-  long brightness = eeprom_storage.get_value(stored_brightness);
-  runtime_secs = eeprom_storage.get_value(stored_duration);
+  get_eeprom_values();
 
-  // ... LIMIT BRIGHTNESS AND RUNTIME IN CASE OF EEPROM VALUES WERE WAY OFF
-  // ... LIMIT BRIGHTNESS AND RUNTIME IN CASE OF EEPROM VALUES WERE WAY OFF
-  // ... LIMIT BRIGHTNESS AND RUNTIME IN CASE OF EEPROM VALUES WERE WAY OFF
-  // ... LIMIT BRIGHTNESS AND RUNTIME IN CASE OF EEPROM VALUES WERE WAY OFF
-
-  // ------------------------
-
+  // RING:
   ring.begin();
   ring.show();
   ring.setBrightness(brightness);
 
+  // SERIAL:
+  Serial.begin(9600);
   Serial.println("EXIT SETUP");
 }
 
