@@ -6,7 +6,7 @@
 
 bool timer_is_running = false;
 
-unsigned long runtime_secs = 3600;
+unsigned long runtime_secs; // gets read from eeprom during setup
 unsigned int runtime_increment = 300; //[s]
 unsigned long start_time; //[ms]
 
@@ -49,7 +49,14 @@ void set_led_blue(int led_no) {
 
 unsigned long calculate_time_per_led() {
   float number_of_leds = ring.numPixels();
-  float float_time_per_led = float(runtime_secs * 1000) / number_of_leds;
+
+  // A fully lightened led ring means the time has run out.
+  // Therefore the final led should light up when time has run out,
+  // not when the last time intervall has started.
+  // Therefore the number intervalls is the number of leds -1.
+
+  float number_of_intervals = number_of_leds - 1;
+  float float_time_per_led = float(runtime_secs * 1000) / number_of_intervals;
   unsigned long time_per_led = float_time_per_led;
   return time_per_led;
 }
@@ -58,16 +65,17 @@ int calculate_current_led() {
   unsigned long time_per_led = calculate_time_per_led();
   unsigned long time_elapsed = millis() - start_time;
   unsigned int current_led = time_elapsed / time_per_led;
-  if (current_led >= ring.numPixels() - 1) {
-    current_led = ring.numPixels() - 1;
+  unsigned int highest_index = ring.numPixels() - 1;
+  if (current_led >= highest_index) {
+    current_led = highest_index;
   }
   return current_led;
 }
 
-void set_all_led_blue() {
+void set_all_leds_blue() {
+  delay(1000); // delay ok, cause it runs only once
   for (unsigned int i = 0; i < ring.numPixels(); i++) {
     set_led_blue(i);
-    delay(5);
   }
 }
 
@@ -105,59 +113,11 @@ void show_timer_duration() {
   }
 }
 
-void fade_in_led() {
+void show_current_led() {
 
   int current_led = calculate_current_led();
 
-  static int previous_led = 0;
-
-  static unsigned long fade_start_time = millis();
-
-  if (current_led != previous_led) {
-    fade_start_time = millis();
-    previous_led = current_led;
-  }
-
-  unsigned long fade_time_elapsed = millis() - fade_start_time;
-
-  float fade_factor = float(fade_time_elapsed) / float(calculate_time_per_led());
-
-  if (fade_factor > 1) {
-    fade_factor = 1;
-  }
-
-  // if (fade_factor < 0.1) {
-  //   fade_factor = 0.1;
-  // }
-
-  if (current_led == 0) {
-    if (fade_factor < 0.5) {
-      fade_factor = 0.5;
-    }
-  }
-
-  // White:
-  const int rgb_full_r = 255;
-  const int rgb_full_g = 255;
-  const int rgb_full_b = 255;
-
-  // Orange:
-  // const int rgb_full_r = 255;
-  // const int rgb_full_g = 65;
-  // const int rgb_full_b = 0;
-
-  fade_factor = 1; // ACTIVATE TO DISABLE FADE
-
-  // Orange faded:
-  int rgb_fade_r = float(rgb_full_r) * fade_factor;
-  int rgb_fade_g = float(rgb_full_g) * fade_factor;
-  int rgb_fade_b = float(rgb_full_b) * fade_factor;
-
-  int fade_led = calculate_current_led();
-
-  ring.setPixelColor(fade_led, rgb_fade_r, rgb_fade_g, rgb_fade_b);
-
-  // delay(2);
+  ring.setPixelColor(current_led, 255, 255, 255); // Orange: 255/65/0
 
   ring.show();
 }
@@ -165,10 +125,16 @@ void fade_in_led() {
 void run_timer() {
   bool round_completed = millis() - start_time >= (runtime_secs * 1000);
 
+  static bool leds_are_all_blue = false;
+
   if (!round_completed) {
-    fade_in_led();
+    show_current_led();
+    leds_are_all_blue = false;
   } else {
-    set_all_led_blue();
+    if (!leds_are_all_blue) {
+      set_all_leds_blue();
+      leds_are_all_blue = true;
+    }
   }
 }
 
@@ -276,9 +242,17 @@ void manage_eeprom_updates() {
 void setup() {
   Serial.begin(9600);
 
+  // --- EEPROM -------------
   eeprom_storage.setup(eeprom_min_address, eepromMaxAddress, number_of_values);
   long brightness = eeprom_storage.get_value(stored_brightness);
   runtime_secs = eeprom_storage.get_value(stored_duration);
+
+  // ... LIMIT BRIGHTNESS AND RUNTIME IN CASE OF EEPROM VALUES WERE WAY OFF
+  // ... LIMIT BRIGHTNESS AND RUNTIME IN CASE OF EEPROM VALUES WERE WAY OFF
+  // ... LIMIT BRIGHTNESS AND RUNTIME IN CASE OF EEPROM VALUES WERE WAY OFF
+  // ... LIMIT BRIGHTNESS AND RUNTIME IN CASE OF EEPROM VALUES WERE WAY OFF
+
+  // ------------------------
 
   ring.begin();
   ring.show();
