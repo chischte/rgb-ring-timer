@@ -76,10 +76,14 @@ int calculate_current_led() {
   return current_led;
 }
 
-void set_all_leds_blue() {
-  delay(1000); // delay ok, cause it runs only once
-  for (unsigned int i = 0; i < ring.numPixels(); i++) {
-    set_led_blue(i);
+void fade_all_leds_to_blue() {
+  delay(3000); // delay ok, cause function runs only once
+  for (int fade_value = 255; fade_value > 1; fade_value--) {
+    for (unsigned int pixel_no = 0; pixel_no < ring.numPixels(); pixel_no++) {
+      ring.setPixelColor(pixel_no, fade_value, fade_value, 255);
+    }
+    ring.show();
+    delay(1);
   }
 }
 
@@ -136,7 +140,7 @@ void run_timer() {
     leds_are_all_blue = false;
   } else {
     if (!leds_are_all_blue) {
-      set_all_leds_blue();
+      fade_all_leds_to_blue();
       leds_are_all_blue = true;
     }
   }
@@ -149,6 +153,7 @@ void increase_brightness() {
     brightness = max_brightness;
   }
   ring.setBrightness(brightness);
+  ring.show();
 
   // CONSOLE OUT:
   Serial.print("BRIGHTNESS: ");
@@ -163,6 +168,7 @@ void decrease_brightness() {
     brightness = min_brightness;
   }
   ring.setBrightness(brightness);
+  ring.show();
 
   // CONSOLE OUT:
   Serial.print("BRIGHTNESS: ");
