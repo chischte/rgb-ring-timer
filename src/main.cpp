@@ -242,6 +242,10 @@ void get_eeprom_values() {
   // GET RUNTIME:
   runtime_secs = eeprom_storage.get_value(stored_duration);
 
+  if (runtime_secs % runtime_increment) {
+    runtime_secs = runtime_increment * (runtime_secs / runtime_increment);
+  }
+
   if (runtime_secs < runtime_increment) {
     runtime_secs = runtime_increment;
   }
@@ -276,6 +280,8 @@ void manage_eeprom_updates() {
 
 void setup() {
 
+  Serial.begin(9600);
+
   // EEPROM:
   eeprom_storage.setup(eeprom_min_address, eepromMaxAddress, number_of_values);
   get_eeprom_values();
@@ -285,8 +291,6 @@ void setup() {
   ring.show();
   ring.setBrightness(brightness);
 
-  // SERIAL:
-  Serial.begin(9600);
   Serial.println("EXIT SETUP");
 
   start_time = millis();
