@@ -7,9 +7,9 @@
 // MODIFY TO CHANGE BEHAVIOUR:
 const int runtime_increment = 300; //[s]
 const int max_brightness = 150;
+bool timer_is_running = true; // if set to true, timer runs after power on
 
 // FIXED:
-bool timer_is_running = false;
 int brightness; // gets read from eeprom during setup
 unsigned long runtime_secs; // gets read from eeprom during setup
 unsigned long start_time; //[ms]
@@ -288,6 +288,8 @@ void setup() {
   // SERIAL:
   Serial.begin(9600);
   Serial.println("EXIT SETUP");
+
+  start_time = millis();
 }
 
 // LOOP ------------------------------------------------------------------------
