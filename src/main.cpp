@@ -1,20 +1,45 @@
 #include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
+#include <Debounce.h> //       https://github.com/chischte/debounce-library
 #include <EEPROM_Counter.h> // https://github.com/chischte/eeprom-counter-library.git
 
 // GLOBALS ---------------------------------------------------------------------
 
+int PIN_GND = 2;
+int PIN_RIGHT = 3;
+int PIN_DOWN = 4;
+int PIN_LEFT = 5;
+int PIN_CENTER = 6;
+int PIN_UP = 7;
+
 // MODIFY TO CHANGE BEHAVIOUR:
 const int runtime_increment = 300; //[s]
 const int max_brightness = 150;
-bool timer_is_running = true; // if set to true, timer runs after power on
+bool timer_is_running = false; // if set to true, timer runs after power on
 
 // FIXED:
 int brightness; // gets read from eeprom during setup
 unsigned long runtime_secs; // gets read from eeprom during setup
 unsigned long start_time; //[ms]
 
-// --- EEPROM ------------------------------------------------------------------
+// DEBOUNCE INPUT PINS ---------------------------------------------------------
+
+Debounce switch_right(PIN_RIGHT);
+Debounce switch_down(PIN_DOWN);
+Debounce switch_left(PIN_LEFT);
+Debounce switch_center(PIN_CENTER);
+Debounce switch_up(PIN_UP);
+
+enum enum_switch_state {
+  state_right, //
+  state_down, //
+  state_left, //
+  state_center, //
+  state_up, //
+  end_of_enum
+};
+
+// EEPROM ----------------------------------------------------------------------
 
 enum counter {
   stored_brightness, //
@@ -175,50 +200,48 @@ void decrease_brightness() {
   Serial.println(ring.getBrightness());
 }
 
-char get_input_char() {
-  int incoming_byte = 0;
-  char incoming_char = '0';
-
-  if (Serial.available() > 0) {
-    incoming_byte = Serial.read();
-    incoming_char = char(incoming_byte);
-  }
-  return incoming_char;
-}
-
 void handle_input_chars() {
-  char incoming_char = get_input_char();
+  int switch_state = end_of_enum;
 
-  const char do_left = 'a';
-  const char do_start = 's';
-  const char do_right = 'd';
-  const char do_up = 'w';
-  const char do_down = 'x';
-
-  switch (incoming_char) {
-  case do_left:
+  if (switch_right.switched_low()) {
+    switch_state = state_right;
+  }
+  if (switch_down.switched_low()) {
+    switch_state = state_down;
+  }
+  if (switch_left.switched_low()) {
+    switch_state = state_left;
+  }
+  if (switch_center.switched_low()) {
+    switch_state = state_center;
+  }
+  if (switch_up.switched_low()) {
+    switch_state = state_up;
+  }
+  switch (switch_state) {
+  case state_left:
     timer_is_running = false;
     ring.clear();
     decrease_time();
     break;
 
-  case do_start:
+  case state_center:
     timer_is_running = true;
     ring.clear();
     start_time = millis();
     break;
 
-  case do_right:
+  case state_right:
     timer_is_running = false;
     ring.clear();
     increase_time();
     break;
 
-  case do_up:
+  case state_up:
     increase_brightness();
     break;
 
-  case do_down:
+  case state_down:
     decrease_brightness();
     break;
 
@@ -279,6 +302,23 @@ void manage_eeprom_updates() {
 // SETUP -----------------------------------------------------------------------
 
 void setup() {
+
+  // ADDITIONAL GND PIN:
+  pinMode(PIN_GND, OUTPUT);
+  digitalWrite(PIN_GND, LOW);
+
+  // switch_right.set_debounce_time(200);
+  // switch_down.set_debounce_time(200);
+  // switch_left.set_debounce_time(200);
+  // switch_center.set_debounce_time(200);
+  // switch_up.set_debounce_time(200);
+
+  // SET INPUT PINS PULLUP:
+  pinMode(PIN_RIGHT, INPUT_PULLUP);
+  pinMode(PIN_DOWN, INPUT_PULLUP);
+  pinMode(PIN_LEFT, INPUT_PULLUP);
+  pinMode(PIN_CENTER, INPUT_PULLUP);
+  pinMode(PIN_UP, INPUT_PULLUP);
 
   Serial.begin(9600);
 
