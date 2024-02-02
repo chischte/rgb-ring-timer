@@ -1,3 +1,7 @@
+// IMPLEMENT MODE: SHOW BATTERY LEVEL
+// IMPLEMENT MODE: SHOW BRIGHTNESS (ALL LIT WHITE)
+// IMPLEMENT PAUSE MODE?
+
 #include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
 #include <Debounce.h> //       https://github.com/chischte/debounce-library
@@ -14,11 +18,12 @@ int PIN_UP = 7;
 
 // MODIFY TO CHANGE BEHAVIOUR:
 const int runtime_increment = 300; //[s]
-const int max_brightness = 150;
 bool timer_is_running = false; // if set to true, timer runs after power on
+byte brightness_levels[] = {1, 2, 3, 5, 9, 15, 27, 48, 85, 150};
+byte no_of_brightness_levels;
+byte current_brightness_level;
 
 // FIXED:
-int brightness; // gets read from eeprom during setup
 unsigned long runtime_secs; // gets read from eeprom during setup
 unsigned long start_time; //[ms]
 
@@ -42,7 +47,7 @@ enum enum_switch_state {
 // EEPROM ----------------------------------------------------------------------
 
 enum counter {
-  stored_brightness, //
+  stored_brightness_level, //
   stored_duration, //
   endOfEnum //as to be the last one!
 };
@@ -172,32 +177,39 @@ void run_timer() {
 }
 
 void increase_brightness() {
-  int brightness = ring.getBrightness();
-  brightness += 1;
-  if (brightness > max_brightness) {
-    brightness = max_brightness;
+
+  byte max_level = no_of_brightness_levels - 1;
+
+  if (current_brightness_level < max_level) {
+    current_brightness_level += 1;
+  } else {
+    current_brightness_level = max_level;
   }
+  byte brightness = brightness_levels[current_brightness_level];
   ring.setBrightness(brightness);
   ring.show();
 
   // CONSOLE OUT:
-  Serial.print("BRIGHTNESS: ");
-  Serial.println(ring.getBrightness());
+  Serial.print("BRIGHTNESS LEVEL: ");
+  Serial.println(current_brightness_level);
 }
 
 void decrease_brightness() {
-  const int min_brightness = 1;
-  int brightness = ring.getBrightness();
-  brightness -= 1;
-  if (brightness < min_brightness) {
-    brightness = min_brightness;
+
+  const int min_level = 0;
+
+  if (current_brightness_level > min_level) {
+    current_brightness_level -= 1;
+  } else {
+    current_brightness_level = min_level;
   }
+  byte brightness = brightness_levels[current_brightness_level];
   ring.setBrightness(brightness);
   ring.show();
 
   // CONSOLE OUT:
-  Serial.print("BRIGHTNESS: ");
-  Serial.println(ring.getBrightness());
+  Serial.print("BRIGHTNESS LEVEL: ");
+  Serial.println(current_brightness_level);
 }
 
 void handle_input_chars() {
@@ -250,16 +262,19 @@ void handle_input_chars() {
   }
 }
 
-void get_eeprom_values() {
+void get_initial_eeprom_values() {
 
   // GET BRIGHTNESS:
-  brightness = eeprom_storage.get_value(stored_brightness);
 
-  if (brightness < 1) {
-    brightness = 1;
+  byte max_level = no_of_brightness_levels - 1;
+
+  current_brightness_level = eeprom_storage.get_value(stored_brightness_level);
+
+  if (current_brightness_level < 0) {
+    current_brightness_level = 0;
   }
-  if (brightness > max_brightness) {
-    brightness = max_brightness;
+  if (current_brightness_level > max_level) {
+    current_brightness_level = max_level;
   }
 
   // GET RUNTIME:
@@ -290,12 +305,18 @@ void manage_eeprom_updates() {
     Serial.println("STORED DURATION");
   }
 
-  static unsigned long prev_brightness = ring.getBrightness();
+  static unsigned long prev_brightness_level = current_brightness_level;
 
-  if (prev_brightness != ring.getBrightness()) {
-    eeprom_storage.set_value(stored_brightness, ring.getBrightness());
-    prev_brightness = ring.getBrightness();
-    Serial.println("STORED BRIGHTNESS");
+  if (prev_brightness_level != current_brightness_level) {
+    eeprom_storage.set_value(stored_brightness_level, current_brightness_level);
+    prev_brightness_level = current_brightness_level;
+
+    // Serial print:
+    byte brightness = brightness_levels[current_brightness_level];
+    Serial.print("STORED BRIGHTNESS LEVEL: ");
+    Serial.print(current_brightness_level);
+    Serial.print(" | STORED BRIGHTNESS: ");
+    Serial.println(brightness);
   }
 }
 
@@ -303,15 +324,15 @@ void manage_eeprom_updates() {
 
 void setup() {
 
+  Serial.begin(9600);
+
   // ADDITIONAL GND PIN:
   pinMode(PIN_GND, OUTPUT);
   digitalWrite(PIN_GND, LOW);
 
-  // switch_right.set_debounce_time(200);
-  // switch_down.set_debounce_time(200);
-  // switch_left.set_debounce_time(200);
-  // switch_center.set_debounce_time(200);
-  // switch_up.set_debounce_time(200);
+  no_of_brightness_levels = sizeof(brightness_levels) / sizeof(byte);
+  Serial.print("NUMBER OF BRIGHTNESS LEVELS: ");
+  Serial.println(no_of_brightness_levels);
 
   // SET INPUT PINS PULLUP:
   pinMode(PIN_RIGHT, INPUT_PULLUP);
@@ -320,16 +341,14 @@ void setup() {
   pinMode(PIN_CENTER, INPUT_PULLUP);
   pinMode(PIN_UP, INPUT_PULLUP);
 
-  Serial.begin(9600);
-
   // EEPROM:
   eeprom_storage.setup(eeprom_min_address, eepromMaxAddress, number_of_values);
-  get_eeprom_values();
+  get_initial_eeprom_values();
 
   // RING:
   ring.begin();
   ring.show();
-  ring.setBrightness(brightness);
+  ring.setBrightness(brightness_levels[current_brightness_level]);
 
   Serial.println("EXIT SETUP");
 
